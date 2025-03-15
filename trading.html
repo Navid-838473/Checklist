@@ -2,9 +2,126 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Trading Checklist</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
+        h2 { text-align: center; }
+        .checklist { list-style-type: none; padding: 0; }
+        .checklist li { margin: 10px 0; }
+        .stock-info { margin-top: 20px; }
+        .status { font-weight: bold; }
+        #stockChart { margin-top: 30px; }
+    </style>
 </head>
 <body>
-    <h1>Hello, World!</h1>
+    <div class="container">
+        <h2>Morning Multi Day Breakout Checklist</h2>
+        <label for="ticker">Enter Stock Ticker:</label>
+        <input type="text" id="ticker" placeholder="e.g., AAPL">
+        <button onclick="evaluateStock()">Check</button>
+
+        <ul class="checklist" id="checklist">
+            <li><input type="checkbox" id="Aplus"> A++ Criteria Met</li>
+            <li><input type="checkbox" id="A"> A Criteria Met</li>
+            <li><input type="checkbox" id="B"> B Criteria Met</li>
+            <li><input type="checkbox" id="C"> C Criteria Met</li>
+        </ul>
+
+        <div class="stock-info" id="stockInfo"></div>
+        <div id="stockChart"></div>
+    </div>
+
+    <script>
+        const API_KEY = 'YOUR_API_KEY';  // Replace with your Alpha Vantage API key
+
+        async function evaluateStock() {
+            let ticker = document.getElementById("ticker").value.toUpperCase();
+            if (ticker) {
+                // Fetch stock data from Yahoo Finance API (this can be done using another method like Yahoo's API or scraping)
+                try {
+                    const yahooDataUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
+                    const response = await fetch(yahooDataUrl);
+                    const data = await response.json();
+                    if (!data.quoteResponse.result || data.quoteResponse.result.length === 0) {
+                        alert('Stock ticker not found.');
+                        return;
+                    }
+
+                    const stockData = data.quoteResponse.result[0];
+                    const marketCap = stockData.marketCap;
+                    const price = stockData.regularMarketPrice;
+                    const float = stockData.floatShares;
+
+                    // Display Stock Info
+                    document.getElementById("stockInfo").innerHTML = `
+                        <h3>Stock Information for ${ticker}</h3>
+                        <p>Price: $${price}</p>
+                        <p>Market Cap: ${formatMarketCap(marketCap)}</p>
+                        <p>Float: ${float}</p>
+                    `;
+
+                    // Evaluate Criteria
+                    const { Aplus, A, B, C } = evaluateCriteria(price, marketCap, float);
+                    document.getElementById("Aplus").checked = Aplus;
+                    document.getElementById("A").checked = A;
+                    document.getElementById("B").checked = B;
+                    document.getElementById("C").checked = C;
+
+                    // Final Evaluation based on Criteria
+                    const finalResult = Aplus ? "A++ Criteria Met" : A ? "A Criteria Met" : B ? "B Criteria Met" : C ? "C Criteria Met" : "No Criteria Met";
+                    alert(`Final Evaluation: ${finalResult}`);
+
+                    // Get Real-time Chart (using Alpha Vantage for the chart)
+                    document.getElementById("stockChart").innerHTML = `<img src="https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${ticker}&interval=5min&apikey=${API_KEY}" alt="Stock Chart for ${ticker}" />`;
+
+                } catch (error) {
+                    console.error('Error fetching stock data:', error);
+                    alert('There was an error fetching the stock data. Please try again.');
+                }
+            } else {
+                alert("Please enter a stock ticker.");
+            }
+        }
+
+        // Evaluate the criteria based on price, market cap, and float
+        function evaluateCriteria(price, marketCap, float) {
+            let Aplus = false, A = false, B = false, C = false;
+
+            // A++ Criteria: 10-50M market cap, $0-1 price, under 5M float
+            if (marketCap >= 10000000 && marketCap <= 50000000 && price >= 0 && price <= 1 && float < 5000000) {
+                Aplus = true;
+            }
+
+            // A Criteria: $1-3 price, under 10M market cap, 5-10M float
+            if (price >= 1 && price <= 3 && marketCap < 10000000 && float >= 5000000 && float <= 10000000) {
+                A = true;
+            }
+
+            // B Criteria: $5-10 price, 250M-1B market cap, 10-50M float
+            if (price >= 5 && price <= 10 && marketCap >= 250000000 && marketCap <= 1000000000 && float >= 10000000 && float <= 50000000) {
+                B = true;
+            }
+
+            // C Criteria: $10-50 price, over 1B market cap, over 200M float
+            if (price >= 10 && price <= 50 && marketCap > 1000000000 && float > 200000000) {
+                C = true;
+            }
+
+            return { Aplus, A, B, C };
+        }
+
+        // Format Market Cap for display
+        function formatMarketCap(marketCap) {
+            if (marketCap >= 1000000000) {
+                return (marketCap / 1000000000).toFixed(2) + 'B';
+            } else if (marketCap >= 1000000) {
+                return (marketCap / 1000000).toFixed(2) + 'M';
+            } else {
+                return marketCap;
+            }
+        }
+    </script>
 </body>
 </html>
